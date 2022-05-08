@@ -37,7 +37,7 @@ elif STATE_TYPE == "joint":
 target_net.eval()
 optimizer = optim.Adam(params = policy_net.parameters(), lr=lr)#,weight_decay = 0.1)
 scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1500,3000],gamma= 0.1)
-#scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience = 200, cooldown = 100)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience = 200, cooldown = 100)
 episode_durations = []
 step = 0
 for episode in range(num_episodes):

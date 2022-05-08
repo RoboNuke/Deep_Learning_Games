@@ -1,0 +1,77 @@
+import gym
+import math
+import random
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from collections import namedtuple
+from itertools import count
+from PIL import Image
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+import torchvision.transforms as T
+import cv2 
+
+is_ipython = 'inline' in matplotlib.get_backend()
+if is_ipython: from IPython import display
+
+Experience = namedtuple(
+    'Experience',
+    ('state', 'action', 'next_state', 'reward')
+)
+
+
+if __name__ == "__main__":
+    e = Experience(2,3,1,4)
+    print(e)
+    
+class ReplayMemory():
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.memory = []
+        self.push_count = 0
+
+    def push(self, experience):
+        if len(self.memory) < self.capacity:
+            self.memory.append(experience)
+        else:
+            self.memory[self.push_count % self.capacity] = experience
+        self.push_count += 1
+
+    def sample(self, batch_size):
+        return random.sample(self.memory, batch_size)
+
+    def can_provide_sample(self, batch_size):
+        return len(self.memory) >= batch_size
+
+
+class EpsilonGreedyStrategy():
+    def __init__(self, start, end, decay):
+        self.start = start
+        self.end = end
+        self.decay = decay
+
+    def get_exploration_rate(self, current_step):
+        return self.end + (self.start - self.end) * \
+            math.exp(-1. * current_step * self.decay)
+
+class Agent():
+    def __init__(self, strategy, num_actions, device):
+        self.current_step = 0
+        self.strategy = strategy
+        self.num_actions = num_actions
+        self.device = device
+
+    def select_action(self, state, policy_net):
+        rate = self.strategy.get_exploration_rate(self.current_step)
+        self.current_step += 1
+
+        if rate > random.random():
+            action =  random.randrange(self.num_actions) 
+            return torch.tensor([action]).to(self.device) # explore
+        else:
+            with torch.no_grad():
+                return policy_net(state).argmax(dim=1).to(self.device) # exploit
+

@@ -1,7 +1,6 @@
-from deepLizard import *
-
-STATE_TYPE = "image_diff"
-#STATE_TYPE = "joint"
+from agent import *
+from EnvManager import *
+from utils import *
 
 batch_size = 256*4
 gamma = 0.99
@@ -20,24 +19,22 @@ loss_function = nn.HuberLoss()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using", device, "for computations")
-em = CartPoleEnvManager(device,STATE_TYPE)
+
+
+em = CartPoleEnvManager(device = device)
 strategy = EpsilonGreedyStrategy(eps_start, eps_end, eps_decay)
 agent = Agent(strategy, em.num_actions_available(), device)
 memory = ReplayMemory(memory_size)
 
-if STATE_TYPE == "image_diff":
-    policy_net = DQN(em.get_screen_height(), em.get_screen_width()).to(device)
-    target_net = DQN(em.get_screen_height(), em.get_screen_width()).to(device)
-    QV = QValues()
-elif STATE_TYPE == "joint":
-    policy_net = DQNJoint().to(device)
-    target_net = DQNJoint().to(device)
-    QV = QValuesJoint()
+policy_net = DQN(em.get_screen_height(), em.get_screen_width()).to(device)
+target_net = DQN(em.get_screen_height(), em.get_screen_width()).to(device)
+QV = QValues()
     
 target_net.eval()
-optimizer = optim.Adam(params = policy_net.parameters(), lr=lr)#,weight_decay = 0.1)
+optimizer = optim.Adam(params = policy_net.parameters(), lr=lr)
 scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1500,3000],gamma= 0.1)
-#scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience = 200, cooldown = 100)
+
+
 episode_durations = []
 step = 0
 for episode in range(num_episodes):
@@ -67,12 +64,10 @@ for episode in range(num_episodes):
             weight_update += 1
         if em.done:
             episode_durations.append(timestep)
-            plot(episode_durations, 100, "output/plots/output.png")
+            plot(episode_durations, 100, "output/plots/plot.png")
             break
         if step % target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
-    #if episode > 250:                                    
-    #    scheduler.step(episode_durations[-1])
     scheduler.step()
 
 em.close()
